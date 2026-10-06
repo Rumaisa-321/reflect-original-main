@@ -218,7 +218,7 @@ export default function AuthPage({ onLoginSuccess, onBackToHome, isAdminPortal =
             >
               Regular User
             </button>
-            {/* <button
+            <button
               type="button"
               className="btn btn-secondary"
               style={{ fontSize: '0.75rem', padding: '6px 12px', height: 'auto' }}
@@ -230,7 +230,7 @@ export default function AuthPage({ onLoginSuccess, onBackToHome, isAdminPortal =
               }}
             >
               Admin Portal
-            </button> */}
+            </button>
           </div>
         </div>
 

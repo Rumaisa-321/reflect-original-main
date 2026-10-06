@@ -1,35 +1,32 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const dns = require('dns');
 
-// Set public DNS servers to resolve querySrv ECONNREFUSED issues on local DNS/routers
+// Fix for querySrv ECONNREFUSED on networks/routers (e.g. JioFiber) that fail to resolve SRV records
 try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
+  dns.setServers(['8.8.8.8', '8.8.4.4']);
 } catch (err) {
-  // Ignore error if custom DNS cannot be set
+  // Ignore if unable to set servers in certain environments
 }
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/reflect');
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Database connection error: ${error.message}`);
-
-    // If Atlas SRV connection fails, try fallback to local MongoDB
-    if (process.env.MONGO_URI && process.env.MONGO_URI.includes('mongodb+srv')) {
-      console.log('Attempting fallback connection to local MongoDB (mongodb://127.0.0.1:27017/reflect)...');
-      try {
-        const fallbackConn = await mongoose.connect('mongodb://127.0.0.1:27017/reflect');
-        console.log(`MongoDB Connected (Local Fallback): ${fallbackConn.connection.host}`);
-        return;
-      } catch (fallbackErr) {
-        console.error(`Local MongoDB fallback failed: ${fallbackErr.message}`);
+const connectDB = async (retries = 3, delay = 3000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const uri = (process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/reflect').trim();
+      const conn = await mongoose.connect(uri, {
+        serverSelectionTimeoutMS: 10000
+      });
+      console.log(`MongoDB Connected: ${conn.connection.host}`);
+      return conn;
+    } catch (error) {
+      console.error(`Database connection attempt ${attempt}/${retries} failed: ${error.message}`);
+      if (attempt === retries) {
+        process.exit(1);
       }
+      console.log(`Retrying connection in ${delay / 1000}s...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
-
-    process.exit(1);
   }
 };
 
 module.exports = connectDB;
-
